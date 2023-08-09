@@ -74,7 +74,17 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.params['W'] = dict()
+        self.params['b'] = dict()
+        self.params['W'][1] = np.random.normal(loc=0, scale=weight_scale, size=(input_dim, hidden_dims[0]))
+        self.params['b'][1] = np.zeros((hidden_dims[0],))
+
+        for i in range(self.num_layers-2):
+          self.params['W'][i+2] = np.random.normal(loc=0, scale=weight_scale, size=(hidden_dims[i], hidden_dims[i+1]))
+          self.params['b'][i+2] = np.zeros((hidden_dims[i+1],))
+
+        self.params['W'][self.num_layers] = np.random.normal(loc=0, scale=weight_scale, size=(hidden_dims[-1], num_classes))
+        self.params['b'][self.num_layers] = np.zeros((num_classes,))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -134,6 +144,7 @@ class FullyConnectedNet(object):
             for bn_param in self.bn_params:
                 bn_param["mode"] = mode
         scores = None
+        cache = dict()
         ############################################################################
         # TODO: Implement the forward pass for the fully connected net, computing  #
         # the class scores for X and storing them in the scores variable.          #
@@ -148,7 +159,13 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        
+        scores, cache[1] = affine_relu_forward(X, self.params['W'][1], self.params['b'][1])
+        for i in range(self.num_layers-2):
+          scores, cache[i+2] = affine_relu_forward(scores, self.params['W'][i+2], self.params['b'][i+2])
+
+        scores, cache[self.num_layers] = affine_relu(scores, self.params['W'][self.num_layers], self.params['b'][self.num_layers])
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -175,7 +192,8 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dscores = softmax_loss(scores, y)
+        
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
