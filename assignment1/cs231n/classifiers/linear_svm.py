@@ -37,6 +37,8 @@ def svm_loss_naive(W, X, y, reg):
             margin = scores[j] - correct_class_score + 1  # note delta = 1
             if margin > 0:
                 loss += margin
+                dW[:,j] += X[i] #adding X[i] to dWj
+                dW[:,y[i]] -= X[i] #substracting X[i] from dWyi
 
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
@@ -55,7 +57,8 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dW /= num_train
+    dW += reg*2*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -78,7 +81,12 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = X.dot(W)
+    correct_class_score = scores[np.arange(len(scores)), y]
+    margin = scores - np.expand_dims(correct_class_score, axis=1) + 1
+    mask = margin<0
+    margin[mask] = 0
+    loss += np.sum(margin)/X.shape[0] - 1 + reg * np.sum(W * W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,7 +101,21 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    delta = np.ones(margin.shape)
+    delta[mask] = 0
+    
+    term1 = np.dot(X.transpose(), delta) #differential of "scores"
+    delta_sum_rows = np.sum(delta, axis=1)
+    # print(delta_sum_rows.shape)
+    
+    Y_delta = np.zeros((y.shape[0], W.shape[1]))
+    y_mask = np.expand_dims(y, axis=1)==np.expand_dims(np.arange(len(y)),axis=0)
+    y_mask = y_mask[:,:10]
+    Y_delta[y_mask]=1
+    
+    term2 = np.dot(X.T, Y_delta*np.expand_dims(-delta_sum_rows, axis=1))
+    
+    dW = (term1+term2)/X.shape[0] + reg*2*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
