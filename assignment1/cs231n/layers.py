@@ -28,7 +28,8 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x_re = x.reshape(x.shape[0], -1)
+    out = x_re.dot(w) + b.reshape(-1,b.shape[0])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -61,13 +62,17 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dx = dout.dot(w.transpose()).reshape(x.shape)
+    x_re = x.reshape(x.shape[0], -1)
+    dw = x_re.transpose().dot(dout)
+    db = np.dot(dout.T, np.ones(x.shape[0]))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     return dx, dw, db
+
 
 
 def relu_forward(x):
@@ -87,7 +92,10 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = x.copy()
+    out[x<0] = 0
+
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -114,13 +122,15 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dout[x<0] = 0
+    dx = dout.copy()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     return dx
+dx
 
 
 def batchnorm_forward(x, gamma, beta, bn_param):
