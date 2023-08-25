@@ -28,7 +28,30 @@ def affine_relu_backward(dout, cache):
 
 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-pass
+def affine_norm_relu_forward(x, w, b, norm = "batchnorm", norm_params={}):
+  a, fc_cache = affine_forward(x, w, b)
+  if norm=="batchnorm":
+    bn, norm_cache = batchnorm_forward(a, norm_params['gamma'], norm_params['beta'], norm_params['bn_param'])
+  elif norm=="layernorm":
+    bn, norm_cache = layernorm_forward(a, norm_params['gamma'], norm_params['beta'], norm_params['bn_param'])
+
+  out, relu_cache = relu_forward(bn)
+  cache = (fc_cache, norm_cache, relu_cache)
+
+  return out, cache
+
+def affine_norm_relu_backward(dout, cache, norm = "batchnorm"):
+  fc_cache, norm_cache, relu_cache = cache
+  da = relu_backward(dout, relu_cache)
+  if norm == 'batchnorm':
+    dnorm, dgamma, dbeta = batchnorm_backward_alt(da, norm_cache)
+  elif norm == "layernorm":
+    dnorm, dgamma, dbeta = layernorm_backward(da, norm_cache)
+  dx, dw, db = affine_backward(dnorm, fc_cache)
+  return dx, dw, db, dgamma, dbeta
+
+    
+
 
 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
