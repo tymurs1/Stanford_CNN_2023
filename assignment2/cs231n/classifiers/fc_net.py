@@ -58,6 +58,7 @@ class FullyConnectedNet(object):
         self.reg = reg
         self.num_layers = 1 + len(hidden_dims)
         self.dtype = dtype
+        self.weight_scale = weight_scale
         self.params = {}
 
         ############################################################################
@@ -164,24 +165,20 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        norm_param =[None for i in range(self.num_layers)]
         if self.normalization is not None:
-          norm_param = {
-            "gamma": self.params["gamma1"],
-            "beta": self.params["beta1"],
-            "bn_param": self.bn_params[0]
-          }
-          scores, cache[1] = affine_norm_relu_forward(X, self.params['W1'], self.params['b1'], self.normalization, norm_param)
-          for i in range(2, self.num_layers):
-            norm_param = {
-            "gamma": self.params["gamma"+str(i)],
-            "beta": self.params["beta"+str(i)],
-            "bn_param": self.bn_params[i-1]
-          }
-            scores, cache[i] = affine_norm_relu_forward(scores, self.params['W'+str(i)], self.params['b'+str(i)], self.normalization, norm_param)
-        else:
-          scores, cache[1] = affine_relu_forward(X, self.params['W1'], self.params['b1'])
-          for i in range(2, self.num_layers):
-            scores, cache[i] = affine_relu_forward(scores, self.params['W'+str(i)], self.params['b'+str(i)])
+          for i in range(1, self.num_layers):
+            norm_param[i-1] = {
+              "gamma": self.params["gamma"+str(i)],
+              "beta": self.params["beta"+str(i)],
+              "bn_param": self.bn_params[i-1]
+            }
+          # scores, cache[1] = affine_norm_relu_forward(X, self.params['W1'], self.params['b1'], self.normalization, norm_param)
+        
+          # scores, cache[i] = affine_norm_relu_forward(scores, self.params['W'+str(i)], self.params['b'+str(i)], self.normalization, norm_param)
+        scores, cache[1] = affine_norm_relu_forward(X, self.params['W1'], self.params['b1'], self.normalization, norm_param[0], self.use_dropout, self.dropout_param)
+        for i in range(2, self.num_layers):
+          scores, cache[i] = affine_norm_relu_forward(scores, self.params['W'+str(i)], self.params['b'+str(i)], self.normalization, norm_param[i-1], self.use_dropout, self.dropout_param)
 
         scores, cache[self.num_layers] = affine_forward(scores, self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
 
@@ -213,22 +210,28 @@ class FullyConnectedNet(object):
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         sum_reg_loss = 0
         loss, dscores = softmax_loss(scores, y)
-        for key, value in self.params.items():
-          if (len(key)<5) or (self.normalization is None):  #accepting W1, W2, .., b1, b2, .., declining beta1, gamma1 .. when batchnorm is on
-            sum_reg_loss+=np.sum(value*value)
+        for i in range(1,self.num_layers+1):
+          sum_reg_loss += np.sum(self.params['W'+str(i)]*self.params['W'+str(i)])
         loss+=0.5*sum_reg_loss*self.reg
 
         dscores, grads['W'+str(self.num_layers)], grads['b'+str(self.num_layers)] = affine_backward(dscores, cache[self.num_layers])
         grads['W'+str(self.num_layers)] += self.reg * cache[self.num_layers][1]
+        for i in range(self.num_layers-1, 0, -1):
+          if self.normalization is not None:
+            dscores, grads['W'+str(i)], grads['b'+str(i)], grads['gamma'+str(i)], grads['beta'+str(i)] = affine_norm_relu_backward(dscores, cache[i], norm=self.normalization, use_dropout=self.use_dropout)
+          else:
+            dscores, grads['W'+str(i)], grads['b'+str(i)], _g, _b = affine_norm_relu_backward(dscores, cache[i], norm=self.normalization, use_dropout=self.use_dropout)
+          grads['W'+str(i)] += self.reg * cache[i][0][1]
+
         
-        if self.normalization is not None:
-          for i in range(self.num_layers-1, 0, -1):
-            dscores, grads['W'+str(i)], grads['b'+str(i)], grads['gamma'+str(i)], grads['beta'+str(i)] = affine_norm_relu_backward(dscores, cache[i], norm=self.normalization)
-            grads['W'+str(i)] += self.reg * cache[i][0][1]
-        else:
-            for i in range(self.num_layers-1, 0, -1):
-              dscores, grads['W'+str(i)], grads['b'+str(i)] = affine_relu_backward(dscores, cache[i])
-              grads['W'+str(i)] += self.reg * cache[i][0][1]
+        # if self.normalization is not None:
+        #   for i in range(self.num_layers-1, 0, -1):
+        #     dscores, grads['W'+str(i)], grads['b'+str(i)], grads['gamma'+str(i)], grads['beta'+str(i)] = affine_norm_relu_backward(dscores, cache[i], norm=self.normalization)
+        #     grads['W'+str(i)] += self.reg * cache[i][0][1]
+        # else:
+        #     for i in range(self.num_layers-1, 0, -1):
+        #       dscores, grads['W'+str(i)], grads['b'+str(i)] = affine_relu_backward(dscores, cache[i])
+        #       grads['W'+str(i)] += self.reg * cache[i][0][1]
 
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****

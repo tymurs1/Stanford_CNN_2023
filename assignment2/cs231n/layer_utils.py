@@ -1,3 +1,4 @@
+from numpy._typing import _DTypeLikeComplex
 from .layers import *
 from .fast_layers import *
 
@@ -28,26 +29,37 @@ def affine_relu_backward(dout, cache):
 
 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-def affine_norm_relu_forward(x, w, b, norm = "batchnorm", norm_params={}):
-  a, fc_cache = affine_forward(x, w, b)
-  if norm=="batchnorm":
-    bn, norm_cache = batchnorm_forward(a, norm_params['gamma'], norm_params['beta'], norm_params['bn_param'])
-  elif norm=="layernorm":
-    bn, norm_cache = layernorm_forward(a, norm_params['gamma'], norm_params['beta'], norm_params['bn_param'])
+def affine_norm_relu_forward(x, w, b, norm = None, norm_params={}, use_dropout=False, dropout_params={}):
+  out, fc_cache = affine_forward(x, w, b)
+  norm_cache = dict()
+  if norm is not None:
+    if norm=="batchnorm":
+      out, norm_cache = batchnorm_forward(out, norm_params['gamma'], norm_params['beta'], norm_params['bn_param'])
+    elif norm=="layernorm":
+      out, norm_cache = layernorm_forward(out, norm_params['gamma'], norm_params['beta'], norm_params['bn_param'])
 
-  out, relu_cache = relu_forward(bn)
-  cache = (fc_cache, norm_cache, relu_cache)
+  out, relu_cache = relu_forward(out)
+  dropout_cache = dict()
+  if use_dropout:
+    out, dropout_cache = dropout_forward(out, dropout_params)
+
+  cache = (fc_cache, norm_cache, relu_cache, dropout_cache)
 
   return out, cache
 
-def affine_norm_relu_backward(dout, cache, norm = "batchnorm"):
-  fc_cache, norm_cache, relu_cache = cache
-  da = relu_backward(dout, relu_cache)
-  if norm == 'batchnorm':
-    dnorm, dgamma, dbeta = batchnorm_backward_alt(da, norm_cache)
-  elif norm == "layernorm":
-    dnorm, dgamma, dbeta = layernorm_backward(da, norm_cache)
-  dx, dw, db = affine_backward(dnorm, fc_cache)
+def affine_norm_relu_backward(dout, cache, norm = None, use_dropout=False):
+  fc_cache, norm_cache, relu_cache, dropout_cache = cache
+  dtemp = dout.copy()
+  if use_dropout:
+    dtemp = dropout_backward(dtemp, dropout_cache)
+  dtemp = relu_backward(dtemp, relu_cache)
+  dgamma, dbeta = (None, None)
+  if norm is not None:
+    if norm == 'batchnorm':
+      dtemp, dgamma, dbeta = batchnorm_backward_alt(dtemp, norm_cache)
+    elif norm == "layernorm":
+      dtemp, dgamma, dbeta = layernorm_backward(dtemp, norm_cache)
+  dx, dw, db = affine_backward(dtemp, fc_cache)
   return dx, dw, db, dgamma, dbeta
 
     
