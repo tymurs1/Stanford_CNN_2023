@@ -608,8 +608,20 @@ def conv_forward_naive(x, w, b, conv_param):
     # Hint: you can use the function np.pad for padding.                      #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    H_out = int(1 + (H + 2 * pad - HH) / stride)
+    W_out = int(1 + (W + 2 * pad - WW) / stride)
+    out = np.zeros((N, F, H_out, W_out))
+    x_padded = np.pad(x, ((0,0),(0,0),(pad,pad),(pad,pad)), "constant", constant_values=0)
+    for i in range(N):
+      for f in range(F):
+        for j in range(0, H_out):
+          for k in range(0, W_out):
+            # print(i,f,j,k)
+            out[i][f][j][k] = np.sum(x_padded[i,:,j*stride:j*stride+HH,k*stride:k*stride+WW]*w[f,:,:,:])+b[f]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -636,8 +648,28 @@ def conv_backward_naive(dout, cache):
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    stride = cache[3]['stride']
+    pad = cache[3]['pad']
+    x = cache[0]
+    N, C, H, W = x.shape
+    w = cache[1]
+    F, C, HH, WW = w.shape
+    H_out, W_out = dout.shape[2], dout.shape[3]
 
-    pass
+    dx = np.zeros(x.shape)
+    dw = np.zeros(w.shape)
+
+    db = np.sum(dout, axis=(0,2,3))
+  
+    for i in range(N):
+      # for j in range(C):
+      for f in range(F):
+        for hh in range(H_out):
+          D_h = hh*stride - pad
+          for ww in range(W_out):
+            D_w = ww*stride - pad
+            dx[i,:,max(0, D_h):min(D_h+HH, H),max(0, D_w):min(D_w+WW, W)]+=float(dout[i,f,hh,ww])*w[f,:,max(0,-D_h):min(H-D_h, HH),max(0,-D_w):min(W-D_w, WW)]
+            dw[f,:,max(0,-D_h):min(H-D_h, HH),max(0,-D_w):min(W-D_w, WW)]+=float(dout[i,f,hh,ww])*x[i,:,max(0, D_h):min(D_h+HH, H),max(0, D_w):min(D_w+WW, W)]  
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -672,7 +704,20 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    pool_height = pool_param['pool_height']
+    pool_width = pool_param['pool_width']
+    stride = pool_param['stride']
+    H_out =  int(1 + (H - pool_height) / stride)
+    W_out = int(1 + (W - pool_width) / stride)
+
+    out = np.zeros((N, C, H_out, W_out))
+
+    for i in range(N):
+      for j in range(C):
+        for hh in range(H_out):
+          for ww in range(W_out):
+            out[i,j,hh,ww] = np.max(x[i,j,hh*stride:hh*stride+pool_height, ww*stride:ww*stride+pool_width])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -698,7 +743,23 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x = cache[0]
+    stride = cache[1]['stride']
+    pool_height = cache[1]['pool_height']
+    pool_width = cache[1]['pool_width']
+    N, C, H, W = x.shape
+    N, C, H_out, W_out = dout.shape
+
+    dx = np.zeros_like(x)
+
+    for i in range(N):
+      for j in range(C):
+        for hh in range(H_out):
+          for ww in range(W_out):
+            max_pool = np.max(x[i,j,hh*stride:hh*stride+pool_height, ww*stride:ww*stride+pool_width])
+            mask = np.ones((pool_height, pool_width))*max_pool == x[i,j,hh*stride:hh*stride+pool_height, ww*stride:ww*stride+pool_width]
+            dx[i,j,hh*stride:hh*stride+pool_height, ww*stride:ww*stride+pool_width][mask] += dout[i,j,hh,ww]
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
